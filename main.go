@@ -3,39 +3,28 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"runtime"
-
-	"github.com/mouuff/go-rocket-update/pkg/provider"
-	"github.com/mouuff/go-rocket-update/pkg/updater"
+	paoUpdater "pao/updater"
 )
 
 const (
-	VERSION_NAME = "v0.1.0"
+	VERSION_NAME               = "v0.0.1"
+	APPLICATION_UPDATE_ADDRESS = "github.com/Minekorea1/poa_go"
 )
 
 func main() {
-	u := &updater.Updater{
-		Provider: &provider.Github{
-			RepositoryURL: "github.com/Minekorea1/poa_go",
-			ArchiveName:   "poa.zip",
-		},
-		ExecutableName: fmt.Sprintf("poa_%s_%s", runtime.GOOS, runtime.GOARCH),
-		Version:        VERSION_NAME,
-	}
+	testFlag := false
+	flag.BoolVar(&testFlag, "testFlag", false, "")
 
 	versionFlag := false
 	flag.BoolVar(&versionFlag, "version", false, "prints the version and exit")
 	flag.Parse()
 
 	if versionFlag {
-		fmt.Println(u.Version)
+		fmt.Println(VERSION_NAME)
 		return
 	}
 
-	fmt.Println(u.Version)
-
-	if _, err := u.Update(); err != nil {
-		log.Println(err)
-	}
+	updater := paoUpdater.NewUpdater()
+	updater.Init(VERSION_NAME, APPLICATION_UPDATE_ADDRESS)
+	updater.Update()
 }
