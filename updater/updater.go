@@ -8,6 +8,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
+
+	"poa/context"
 
 	"github.com/mouuff/go-rocket-update/pkg/provider"
 	rokUpdater "github.com/mouuff/go-rocket-update/pkg/updater"
@@ -22,8 +25,10 @@ const (
 )
 
 type Updater struct {
-	version string
-	github  string
+	version  string
+	github   string
+	interval int
+	cond     chan int
 }
 
 func NewUpdater() *Updater {
@@ -31,9 +36,10 @@ func NewUpdater() *Updater {
 	return &updater
 }
 
-func (updater *Updater) Init(version, github string) {
-	updater.version = version
-	updater.github = github
+func (updater *Updater) Init(context *context.Context) {
+	updater.version = context.Version
+	updater.github = context.Configs.UpdateAddress
+	updater.interval = context.Configs.UpdateCheckIntervalSec
 }
 
 func versionCompare(ver1, ver2 string) VersionRO {
@@ -106,7 +112,7 @@ func verify(u *rokUpdater.Updater) error {
 	return nil
 }
 
-func (updater Updater) Update() {
+func (updater *Updater) update() {
 	u := &rokUpdater.Updater{
 		Provider: &provider.Github{
 			RepositoryURL: updater.github,
@@ -118,7 +124,7 @@ func (updater Updater) Update() {
 
 	lastestVersion, err := u.GetLatestVersion()
 
-	fmt.Println("current Version:", u.Version, ", server Version:", lastestVersion)
+	fmt.Printf("current Version: %s, server Version: %s\n", u.Version, lastestVersion)
 
 	if err == nil {
 		if versionCompare(u.Version, lastestVersion) == lt {
@@ -142,4 +148,29 @@ func (updater Updater) Update() {
 	} else {
 		log.Println(err)
 	}
+}
+
+func (updater *Updater) Start() {
+	go func() {
+		updater.cond = make(chan int)
+
+		ticker := time.NewTicker(time.Second * time.Duration(updater.interval))
+		go func() {
+			for range ticker.C {
+				updater.cond <- 0
+			}
+		}()
+
+		for {
+			<-updater.cond
+
+			updater.update()
+
+			//TODO: need update & restart
+		}
+	}()
+}
+
+func (updater *Updater) Update() {
+	updater.cond <- 0
 }
