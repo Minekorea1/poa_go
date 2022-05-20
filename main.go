@@ -53,9 +53,6 @@ func Initialize() *context.Context {
 }
 
 func main() {
-	testFlag := false
-	flag.BoolVar(&testFlag, "testFlag", false, "")
-
 	versionFlag := false
 	flag.BoolVar(&versionFlag, "version", false, "prints the version and exit")
 	flag.Parse()

@@ -8,12 +8,6 @@ type Context struct {
 	Version string
 
 	Configs Configs
-
-	// UpdateAddress          string
-	// UpdateCheckIntervalSec int
-	// MqttBrokerAddress      string
-	// MqttPort               int
-	// PoaIntervalSec         int
 }
 
 type Configs struct {

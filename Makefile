@@ -11,7 +11,7 @@ all: windows linux
 windows: export GOOS=windows
 windows: export GOARCH=amd64
 windows:
-	go build -o bin/$(BIN)_${GOOS}_${GOARCH}.exe $(MODULE)
+	go build -o bin/$(BIN)_${GOOS}_${GOARCH}.exe -ldflags '-H windowsgui' $(MODULE)
 
 linux: export GOOS=linux
 linux: export GOARCH=amd64

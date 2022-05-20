@@ -1,6 +1,7 @@
 package poa
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -13,10 +14,20 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+type DeviceInfo struct {
+	// Timestamp int64
+
+	MacAddress string
+	PublicIp   string
+	PrivateIp  string
+	Owner      string
+	OwnNumber  int
+	DeviceType int
+	DeviceDesc string
+}
+
 type Poa struct {
-	deviceType int
-	deviceName string
-	deviceDesc string
+	deviceInfo DeviceInfo
 
 	intervalSec   int
 	brokerAddress string
@@ -33,7 +44,12 @@ func NewPoa() *Poa {
 }
 
 func (poa *Poa) Init(context *context.Context) {
-	// poa.deviceType = context.
+	// TODO:
+	poa.deviceInfo.MacAddress = nettool.GetMacAddr()
+	poa.deviceInfo.Owner = ""
+	poa.deviceInfo.OwnNumber = 0
+	poa.deviceInfo.DeviceType = 0
+	poa.deviceInfo.DeviceDesc = ""
 
 	poa.intervalSec = context.Configs.PoaIntervalSec
 	poa.brokerAddress = context.Configs.MqttBrokerAddress
@@ -47,7 +63,7 @@ func (poa *Poa) Init(context *context.Context) {
 
 	poa.mqttOpts = mqtt.NewClientOptions()
 	poa.mqttOpts.AddBroker(fmt.Sprintf("tcp://%s:%d", poa.brokerAddress, poa.brokerPort))
-	poa.mqttOpts.SetClientID(nettool.GetMacAddr())
+	poa.mqttOpts.SetClientID(poa.deviceInfo.MacAddress + "x") //TODO: remove x
 	// poa.mqttOpts.SetUsername("emqx")
 	// poa.mqttOpts.SetPassword("public")
 	poa.mqttOpts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
@@ -76,15 +92,33 @@ func (poa *Poa) Start() {
 			return
 		}
 
-		token := poa.mqttClient.Subscribe(fmt.Sprintf("%s/%s/poa/info", nettool.GetPublicIP(), nettool.GetPrivateIP()), poa.mqttQos, nil)
+		publicIp, _ := nettool.GetPublicIP()
+		privateIP := nettool.GetPrivateIP()
+
+		if publicIp == "" || privateIP == "" {
+			panic("failed to obtain ip address.")
+		}
+
+		token := poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/#", publicIp, privateIP), poa.mqttQos, nil)
 		token.Wait()
 
 		// timer start
 		ticker := time.NewTicker(time.Second * time.Duration(poa.intervalSec))
 		go func() {
 			for range ticker.C {
-				token := poa.mqttClient.Publish(fmt.Sprintf("%s/%s/poa/info", nettool.GetPublicIP(), nettool.GetPrivateIP()), poa.mqttQos, false, "hello")
-				token.Wait()
+				publicIp, _ := nettool.GetPublicIP()
+				privateIP := nettool.GetPrivateIP()
+
+				if publicIp != "" && privateIP != "" {
+					poa.deviceInfo.PublicIp = publicIp
+					poa.deviceInfo.PrivateIp = privateIP
+
+					doc, err := json.MarshalIndent(poa.deviceInfo, "", "    ")
+					if err == nil {
+						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, privateIP), poa.mqttQos, false, string(doc))
+						token.Wait()
+					}
+				}
 			}
 		}()
 	}()
