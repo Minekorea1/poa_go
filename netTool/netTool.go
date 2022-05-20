@@ -3,6 +3,7 @@ package nettool
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -23,16 +24,16 @@ func GetMacAddr() (addr string) {
 	return
 }
 
-func GetPublicIP() string {
+func GetPublicIP() (string, error) {
 	req, err := http.Get("http://ip-api.com/json/")
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 	defer req.Body.Close()
 
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 
 	type IP struct {
@@ -43,7 +44,11 @@ func GetPublicIP() string {
 	var ip IP
 	json.Unmarshal(body, &ip)
 
-	return ip.Query
+	if net.ParseIP(ip.Query).To4() != nil {
+		return ip.Query, nil
+	}
+
+	return "", errors.New("can't get ip address")
 }
 
 func GetPrivateIP() string {
