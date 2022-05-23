@@ -28,7 +28,7 @@ type Updater struct {
 	version  string
 	github   string
 	interval int
-	cond     chan int
+	condCh   chan int
 }
 
 func NewUpdater() *Updater {
@@ -152,17 +152,17 @@ func (updater *Updater) update() {
 
 func (updater *Updater) Start() {
 	go func() {
-		updater.cond = make(chan int)
+		updater.condCh = make(chan int)
 
 		ticker := time.NewTicker(time.Second * time.Duration(updater.interval))
 		go func() {
 			for range ticker.C {
-				updater.cond <- 0
+				updater.condCh <- 0
 			}
 		}()
 
 		for {
-			<-updater.cond
+			<-updater.condCh
 
 			updater.update()
 
@@ -172,5 +172,5 @@ func (updater *Updater) Start() {
 }
 
 func (updater *Updater) Update() {
-	updater.cond <- 0
+	updater.condCh <- 0
 }

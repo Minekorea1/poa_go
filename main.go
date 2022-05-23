@@ -17,7 +17,7 @@ const (
 	VERSION_NAME                          = "v0.2.0"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
-	MQTT_BROKER_ADDRESS                   = "192.168.50.94"
+	MQTT_BROKER_ADDRESS                   = "192.168.50.99"
 	MQTT_PORT                             = 1883
 	POA_INTERVAL_SEC                      = 60
 )
