@@ -3,9 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
 	"poa/context"
+	nettool "poa/netTool"
 	"poa/poa"
 	poaUpdater "poa/updater"
+	"regexp"
 	"strings"
 
 	"fyne.io/fyne/v2/app"
@@ -14,10 +17,10 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.2.0"
+	VERSION_NAME                          = "v0.3.0"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
-	MQTT_BROKER_ADDRESS                   = "192.168.50.99"
+	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"
 	MQTT_PORT                             = 1883
 	POA_INTERVAL_SEC                      = 60
 )
@@ -32,6 +35,20 @@ func ternaryOP(cond bool, valTrue, valFalse interface{}) interface{} {
 
 func emptyString(str string) bool {
 	return strings.TrimSpace(str) == ""
+}
+
+func getClientId() string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	b := make([]rune, 11)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+
+	mac := nettool.GetMacAddr()
+	reg, _ := regexp.Compile(`[:]`)
+	mac = reg.ReplaceAllLiteralString(mac, "")
+	return fmt.Sprintf("%s%s", mac, string(b))
 }
 
 func Initialize() *context.Context {
@@ -63,7 +80,11 @@ func main() {
 	}
 
 	context := Initialize()
-	// context.Configs.WriteFile("config.json")
+
+	if len(context.Configs.DeviceId) != 23 {
+		context.Configs.DeviceId = getClientId()
+		context.WriteConfig()
+	}
 
 	updater := poaUpdater.NewUpdater()
 	updater.Init(context)
@@ -73,20 +94,22 @@ func main() {
 	poa.Init(context)
 	poa.Start()
 
-	// for {
-	// 	time.Sleep(time.Second)
-	// }
-
-	a := app.New()
-	w := a.NewWindow("Hello")
+	///////////////
+	app := app.New()
+	win := app.NewWindow("Hello")
 
 	hello := widget.NewLabel("Hello Fyne!")
-	w.SetContent(container.NewVBox(
+	win.SetContent(container.NewVBox(
 		hello,
 		widget.NewButton("Hi!", func() {
 			hello.SetText("Welcome :)")
 		}),
 	))
 
-	w.ShowAndRun()
+	win.ShowAndRun()
+	////////////////////
+
+	// 	for {
+	// 		time.Sleep(time.Second)
+	// 	}
 }

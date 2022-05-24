@@ -11,9 +11,16 @@ all: windows linux
 windows: export GOOS=windows
 windows: export GOARCH=amd64
 windows:
-	go build -o bin/$(BIN)_${GOOS}_${GOARCH}.exe -ldflags '-H windowsgui' $(MODULE)
+	fyne-cross windows -arch=amd64 -output $(BIN)_${GOOS}_${GOARCH}.exe
+#	go build -o bin/$(BIN)_${GOOS}_${GOARCH}.exe -ldflags '-H windowsgui' $(MODULE)
 
 linux: export GOOS=linux
 linux: export GOARCH=amd64
+# linux: export CGO_ENABLED=1
 linux:
-	go build -o bin/$(BIN)_${GOOS}_${GOARCH} $(MODULE)
+	fyne-cross linux -arch=amd64 -output $(BIN)_${GOOS}_${GOARCH}
+#	go build -o bin/$(BIN)_${GOOS}_${GOARCH} $(MODULE)
+
+install:
+	cp fyne-cross/bin/windows-amd64/* bin
+	cp fyne-cross/bin/linux-amd64/* bin

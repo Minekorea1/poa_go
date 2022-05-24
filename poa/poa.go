@@ -17,6 +17,7 @@ import (
 type DeviceInfo struct {
 	// Timestamp int64
 
+	DeviceId   string
 	MacAddress string
 	PublicIp   string
 	PrivateIp  string
@@ -38,6 +39,8 @@ type Poa struct {
 	mqttQos    byte
 
 	condCh chan int
+
+	context *context.Context
 }
 
 // client to server
@@ -81,16 +84,19 @@ func (poa *Poa) Init(context *context.Context) {
 	rand.Seed(time.Now().UnixNano())
 
 	// TODO:
+	poa.deviceInfo.DeviceId = context.Configs.DeviceId
 	poa.deviceInfo.MacAddress = nettool.GetMacAddr()
-	poa.deviceInfo.Owner = ""
-	poa.deviceInfo.OwnNumber = 0
-	poa.deviceInfo.DeviceType = 0
-	poa.deviceInfo.DeviceDesc = ""
+	poa.deviceInfo.Owner = context.Configs.Owner
+	poa.deviceInfo.OwnNumber = context.Configs.OwnNumber
+	poa.deviceInfo.DeviceType = context.Configs.DeviceType
+	poa.deviceInfo.DeviceDesc = context.Configs.DeviceDesc
 
 	poa.intervalSec = context.Configs.PoaIntervalSec
 	poa.brokerAddress = context.Configs.MqttBrokerAddress
 	poa.brokerPort = context.Configs.MqttPort
 	poa.mqttQos = 1
+
+	poa.context = context
 
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
@@ -99,7 +105,7 @@ func (poa *Poa) Init(context *context.Context) {
 
 	poa.mqttOpts = mqtt.NewClientOptions()
 	poa.mqttOpts.AddBroker(fmt.Sprintf("tcp://%s:%d", poa.brokerAddress, poa.brokerPort))
-	poa.mqttOpts.SetClientID(poa.getRandomClientId())
+	poa.mqttOpts.SetClientID(poa.deviceInfo.DeviceId)
 	// poa.mqttOpts.SetUsername("emqx")
 	// poa.mqttOpts.SetPassword("public")
 	poa.mqttOpts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
@@ -117,7 +123,7 @@ func (poa *Poa) Init(context *context.Context) {
 func (poa *Poa) Start() {
 	go func() {
 		// random sleep
-		// time.Sleep(time.Duration(rand.Int31n(10000)) * time.Millisecond) //TODO: uncomment
+		time.Sleep(time.Duration(rand.Int31n(10000)) * time.Millisecond)
 
 		poa.mqttClient = mqtt.NewClient(poa.mqttOpts)
 
@@ -134,7 +140,7 @@ func (poa *Poa) Start() {
 			panic("failed to obtain ip address.")
 		}
 
-		token := poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/response/#", publicIp, poa.deviceInfo.MacAddress), poa.mqttQos,
+		token := poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/response/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
 			func(client mqtt.Client, msg mqtt.Message) {
 				response := Response{}
 				json.Unmarshal(msg.Payload(), &response)
@@ -143,7 +149,7 @@ func (poa *Poa) Start() {
 			})
 		token.Wait()
 
-		token = poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/command/#", publicIp, poa.deviceInfo.MacAddress), poa.mqttQos,
+		token = poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/command/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
 			func(client mqtt.Client, msg mqtt.Message) {
 				command := Command{}
 				json.Unmarshal(msg.Payload(), &command)
@@ -179,6 +185,11 @@ func (poa *Poa) Start() {
 				}
 			}()
 
+			// run once at startup
+			go func() {
+				poa.condCh <- 0
+			}()
+
 			for {
 				<-poa.condCh
 
@@ -205,7 +216,7 @@ func (poa *Poa) Start() {
 
 					doc, err := json.MarshalIndent(poa.deviceInfo, "", "    ")
 					if err == nil {
-						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.MacAddress), poa.mqttQos, false, string(doc))
+						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
 						token.Wait()
 					} else {
 						log.Println(err)
@@ -220,6 +231,7 @@ func (poa *Poa) forcePublish() {
 	poa.condCh <- 0
 }
 
+/*
 func (poa *Poa) getRandomClientId() string {
 	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -229,10 +241,15 @@ func (poa *Poa) getRandomClientId() string {
 	}
 	return fmt.Sprintf("%s_%s", poa.deviceInfo.MacAddress, string(b))
 }
+*/
 
 func (poa *Poa) processResponse(response *Response) {
 	if response.Type == "available" {
 		poa.deviceInfo.OwnNumber = response.Available.OwnNumbers[0]
+		poa.context.Configs.OwnNumber = poa.deviceInfo.OwnNumber
+		poa.context.WriteConfig()
+
+		fmt.Println("set OwnNumber =", poa.deviceInfo.OwnNumber)
 
 		poa.forcePublish()
 	}

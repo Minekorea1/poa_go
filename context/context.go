@@ -2,12 +2,15 @@ package context
 
 import (
 	"poa/jsonWrapper"
+	"sync"
 )
 
 type Context struct {
 	Version string
 
 	Configs Configs
+
+	mutexConfig *sync.Mutex
 }
 
 type Configs struct {
@@ -16,6 +19,12 @@ type Configs struct {
 	MqttBrokerAddress      string
 	MqttPort               int
 	PoaIntervalSec         int
+
+	DeviceId   string
+	Owner      string
+	OwnNumber  int
+	DeviceType int
+	DeviceDesc string
 }
 
 type DeviceType int
@@ -28,9 +37,18 @@ const (
 func NewContext() *Context {
 	context := Context{
 		// Configs: Configs{},
+		mutexConfig: &sync.Mutex{},
 	}
 	context.Configs.ReadFile("config.json")
 	return &context
+}
+
+func (context *Context) WriteConfig() {
+	go func() {
+		context.mutexConfig.Lock()
+		context.Configs.WriteFile("config.json")
+		context.mutexConfig.Unlock()
+	}()
 }
 
 func (configs *Configs) ToJson() string {

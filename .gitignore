@@ -15,3 +15,4 @@
 # vendor/
 /.vscode
 /config.json
+/fyne-cross
