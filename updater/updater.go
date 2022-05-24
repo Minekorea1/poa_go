@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -112,7 +113,7 @@ func verify(u *rokUpdater.Updater) error {
 	return nil
 }
 
-func (updater *Updater) update() {
+func (updater *Updater) update() (bool, error) {
 	u := &rokUpdater.Updater{
 		Provider: &provider.Github{
 			RepositoryURL: updater.github,
@@ -138,15 +139,20 @@ func (updater *Updater) update() {
 					log.Println(err)
 					log.Println("Rolling back...")
 					u.Rollback()
-					return
+					return false, err
 				}
+
 				fmt.Println("software update complete.")
+				return true, nil
 			} else {
 				fmt.Println("software update failed.")
 			}
 		}
+
+		return false, errors.New("software update failed")
 	} else {
 		log.Println(err)
+		return false, err
 	}
 }
 
@@ -161,16 +167,57 @@ func (updater *Updater) Start() {
 			}
 		}()
 
+		// update once at startup
+		go func() {
+			updater.condCh <- 0
+		}()
+
 		for {
 			<-updater.condCh
 
-			updater.update()
-
-			//TODO: need update & restart
+			if success, _ := updater.update(); success {
+				// update & restart
+				StartSelfProcess()
+				os.Exit(0)
+			}
 		}
 	}()
 }
 
 func (updater *Updater) Update() {
 	updater.condCh <- 0
+}
+
+var originalWD, _ = os.Getwd()
+
+func StartProcess(args ...string) (*os.Process, error) {
+	argv0, err := exec.LookPath(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	process, err := os.StartProcess(argv0, args, &os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		Dir:   originalWD,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return process, nil
+}
+
+func StartSelfProcess() (*os.Process, error) {
+	argv0, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	process, err := os.StartProcess(argv0, os.Args, &os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		Dir:   originalWD,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return process, nil
 }
