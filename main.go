@@ -3,21 +3,25 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"poa/context"
 	nettool "poa/netTool"
 	"poa/poa"
+	"poa/res"
+	"poa/ui"
 	poaUpdater "poa/updater"
 	"regexp"
 	"strings"
+	"time"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 )
 
 const (
-	VERSION_NAME                          = "v0.3.0"
+	VERSION_NAME                          = "v0.4.0"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"
@@ -38,6 +42,8 @@ func emptyString(str string) bool {
 }
 
 func getClientId() string {
+	rand.Seed(time.Now().UnixNano())
+
 	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	b := make([]rune, 11)
@@ -79,6 +85,8 @@ func main() {
 		return
 	}
 
+	fmt.Printf("version: %s\n", VERSION_NAME)
+
 	context := Initialize()
 
 	if len(context.Configs.DeviceId) != 23 {
@@ -94,22 +102,36 @@ func main() {
 	poa.Init(context)
 	poa.Start()
 
-	///////////////
-	app := app.New()
-	win := app.NewWindow("Hello")
+	// ui
+	a := app.NewWithID("PoaApp")
+	a.SetIcon(res.IconMain)
+	a.Settings().SetTheme(&ui.MyTheme{})
+	a.Lifecycle().SetOnStarted(func() {
+		go func() {
+			for {
+				ui.Status.Refresh()
 
-	hello := widget.NewLabel("Hello Fyne!")
-	win.SetContent(container.NewVBox(
-		hello,
-		widget.NewButton("Hi!", func() {
-			hello.SetText("Welcome :)")
-		}),
-	))
+				time.Sleep(time.Second)
+			}
+		}()
+	})
+	a.Lifecycle().SetOnStopped(func() {
+		log.Println("Lifecycle: Stopped")
+	})
+	win := a.NewWindow("PoA")
+	a.Settings().SetTheme(&ui.MyTheme{})
+	win.SetMaster()
 
+	ui.Init(&a, poa)
+	uiMenu := ui.Menu{}
+	subContent := container.NewMax()
+
+	// mainContent := container.NewHSplit(uiMenu.MakeMenu(), uiStatus.GetContainer())
+	// mainContent.Offset = 0.2
+	mainContent := container.NewBorder(nil, nil, uiMenu.MakeMenu(subContent), nil, subContent)
+	win.SetContent(mainContent)
+	subContent.Objects = []fyne.CanvasObject{ui.Status.GetContent()}
+
+	win.Resize(fyne.NewSize(640, 460))
 	win.ShowAndRun()
-	////////////////////
-
-	// 	for {
-	// 		time.Sleep(time.Second)
-	// 	}
 }

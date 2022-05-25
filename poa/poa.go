@@ -15,7 +15,7 @@ import (
 )
 
 type DeviceInfo struct {
-	// Timestamp int64
+	Timestamp int64
 
 	DeviceId   string
 	MacAddress string
@@ -95,6 +95,8 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.brokerAddress = context.Configs.MqttBrokerAddress
 	poa.brokerPort = context.Configs.MqttPort
 	poa.mqttQos = 1
+
+	poa.condCh = make(chan int)
 
 	poa.context = context
 
@@ -176,8 +178,6 @@ func (poa *Poa) Start() {
 
 		// loop start
 		go func() {
-			poa.condCh = make(chan int)
-
 			ticker := time.NewTicker(time.Second * time.Duration(poa.intervalSec))
 			go func() {
 				for range ticker.C {
@@ -218,6 +218,8 @@ func (poa *Poa) Start() {
 					if err == nil {
 						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
 						token.Wait()
+
+						poa.deviceInfo.Timestamp = time.Now().Unix()
 					} else {
 						log.Println(err)
 					}
@@ -227,7 +229,7 @@ func (poa *Poa) Start() {
 	}()
 }
 
-func (poa *Poa) forcePublish() {
+func (poa *Poa) ForcePublish() {
 	poa.condCh <- 0
 }
 
@@ -246,11 +248,27 @@ func (poa *Poa) getRandomClientId() string {
 func (poa *Poa) processResponse(response *Response) {
 	if response.Type == "available" {
 		poa.deviceInfo.OwnNumber = response.Available.OwnNumbers[0]
-		poa.context.Configs.OwnNumber = poa.deviceInfo.OwnNumber
-		poa.context.WriteConfig()
+		// poa.context.Configs.OwnNumber = poa.deviceInfo.OwnNumber
+		// poa.context.WriteConfig()
+		poa.WriteDeviceInfo(&poa.deviceInfo)
 
 		fmt.Println("set OwnNumber =", poa.deviceInfo.OwnNumber)
 
-		poa.forcePublish()
+		poa.ForcePublish()
 	}
+}
+
+func (poa *Poa) GetDeviceInfo() *DeviceInfo {
+	return &poa.deviceInfo
+}
+
+func (poa *Poa) WriteDeviceInfo(deviceInfo *DeviceInfo) {
+	poa.context.Configs.DeviceId = deviceInfo.DeviceId
+	poa.context.Configs.Owner = deviceInfo.Owner
+	poa.context.Configs.OwnNumber = deviceInfo.OwnNumber
+	poa.context.Configs.DeviceType = deviceInfo.DeviceType
+	poa.context.Configs.DeviceDesc = deviceInfo.DeviceDesc
+
+	poa.context.WriteConfig()
+
 }
