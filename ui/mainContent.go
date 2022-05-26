@@ -6,8 +6,11 @@ import (
 	"strconv"
 	"time"
 
+	"poa/context"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -21,6 +24,7 @@ type Menu struct {
 }
 
 var (
+	poaCtx  *context.Context
 	poaInst *poa.Poa
 
 	menus     map[string]Menu
@@ -40,6 +44,7 @@ type contentStatus struct {
 	labelMacAddress  *widget.Label
 	labelDeviceId    *widget.Label
 	labelLastPoaTime *widget.Label
+	labelVersion     *widget.Label
 }
 
 type contentConfig struct {
@@ -49,7 +54,8 @@ type contentConfig struct {
 	description *widget.Entry
 }
 
-func Init(_ *fyne.App, p *poa.Poa) {
+func Init(_ *fyne.App, ctx *context.Context, p *poa.Poa) {
+	poaCtx = ctx
 	poaInst = p
 
 	Status = newStatus()
@@ -117,10 +123,12 @@ func newStatus() *contentStatus {
 	status.labelMacAddress = widget.NewLabel("맥주소:")
 	status.labelDeviceId = widget.NewLabel("장치 고유번호:")
 	status.labelLastPoaTime = widget.NewLabel("마지막 통신 시간:")
+	status.labelVersion = widget.NewLabel("버전:")
 
 	status.Content.Add(container.NewVBox(status.labelOwner, status.labelOwnNumber))
 	status.Content.Add(status.labelDesc)
-	status.Content.Add(container.NewVBox(widget.NewSeparator(), status.labelPublicIp, status.labelPrivateIp, status.labelMacAddress, status.labelDeviceId, status.labelLastPoaTime))
+	status.Content.Add(container.NewVBox(widget.NewSeparator(), status.labelPublicIp, status.labelPrivateIp, status.labelMacAddress,
+		status.labelDeviceId, status.labelLastPoaTime, layout.NewSpacer(), status.labelVersion))
 
 	return &status
 }
@@ -130,12 +138,13 @@ func (status *contentStatus) Refresh() {
 
 	status.labelOwner.SetText(fmt.Sprintf("사용자: %s", deviceInfo.Owner))
 	status.labelOwnNumber.SetText(fmt.Sprintf("장치 번호: %d", deviceInfo.OwnNumber))
-	status.labelDesc.SetText(fmt.Sprintf("설명:\n%s", deviceInfo.DeviceDesc))
+	status.labelDesc.SetText(fmt.Sprintf("설명: %s", deviceInfo.DeviceDesc))
 	status.labelPublicIp.SetText(fmt.Sprintf("공인IP: %s", deviceInfo.PublicIp))
 	status.labelPrivateIp.SetText(fmt.Sprintf("내부IP: %s", deviceInfo.PrivateIp))
 	status.labelMacAddress.SetText(fmt.Sprintf("맥주소: %s", deviceInfo.MacAddress))
 	status.labelDeviceId.SetText(fmt.Sprintf("장치 고유번호: %s", deviceInfo.DeviceId))
 	status.labelLastPoaTime.SetText(fmt.Sprintf("마지막 통신 시간: %s", time.Unix(deviceInfo.Timestamp, 0).Format("2006-01-02 15:04")))
+	status.labelVersion.SetText(fmt.Sprintf("버전: %s", poaCtx.Version))
 }
 
 func (status *contentStatus) GetContent() *fyne.Container {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"poa/context"
 	nettool "poa/netTool"
 	"poa/poa"
@@ -21,7 +22,7 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.4.0"
+	VERSION_NAME                          = "v0.4.1"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"
@@ -103,6 +104,7 @@ func main() {
 	poa.Start()
 
 	// ui
+	os.Setenv("FYNE_THEME", "light") // light or dark
 	a := app.NewWithID("PoaApp")
 	a.SetIcon(res.IconMain)
 	a.Settings().SetTheme(&ui.MyTheme{})
@@ -122,7 +124,7 @@ func main() {
 	a.Settings().SetTheme(&ui.MyTheme{})
 	win.SetMaster()
 
-	ui.Init(&a, poa)
+	ui.Init(&a, context, poa)
 	uiMenu := ui.Menu{}
 	subContent := container.NewMax()
 
