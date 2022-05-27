@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.4.1"
+	VERSION_NAME                          = "v0.4.2"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"

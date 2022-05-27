@@ -25,6 +25,7 @@ type DeviceInfo struct {
 	OwnNumber  int
 	DeviceType int
 	DeviceDesc string
+	Version    string
 }
 
 type Poa struct {
@@ -83,13 +84,13 @@ func NewPoa() *Poa {
 func (poa *Poa) Init(context *context.Context) {
 	rand.Seed(time.Now().UnixNano())
 
-	// TODO:
 	poa.deviceInfo.DeviceId = context.Configs.DeviceId
 	poa.deviceInfo.MacAddress = nettool.GetMacAddr()
 	poa.deviceInfo.Owner = context.Configs.Owner
 	poa.deviceInfo.OwnNumber = context.Configs.OwnNumber
 	poa.deviceInfo.DeviceType = context.Configs.DeviceType
 	poa.deviceInfo.DeviceDesc = context.Configs.DeviceDesc
+	poa.deviceInfo.Version = context.Version
 
 	poa.intervalSec = context.Configs.PoaIntervalSec
 	poa.brokerAddress = context.Configs.MqttBrokerAddress
