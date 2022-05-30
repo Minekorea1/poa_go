@@ -15,7 +15,7 @@ import (
 )
 
 type DeviceInfo struct {
-	Timestamp int64
+	// Timestamp int64
 
 	DeviceId   string
 	MacAddress string
@@ -29,7 +29,8 @@ type DeviceInfo struct {
 }
 
 type Poa struct {
-	deviceInfo DeviceInfo
+	deviceInfo           DeviceInfo
+	MqttPublishTimestamp int64
 
 	intervalSec   int
 	brokerAddress string
@@ -220,7 +221,7 @@ func (poa *Poa) Start() {
 						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
 						token.Wait()
 
-						poa.deviceInfo.Timestamp = time.Now().Unix()
+						poa.MqttPublishTimestamp = time.Now().Unix()
 					} else {
 						log.Println(err)
 					}
