@@ -6,15 +6,19 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"regexp"
+	"runtime"
+	"strings"
+	"time"
+
+	poaAutoStart "poa/autostart"
+	"poa/console"
 	"poa/context"
 	nettool "poa/netTool"
 	"poa/poa"
 	"poa/res"
 	"poa/ui"
 	poaUpdater "poa/updater"
-	"regexp"
-	"strings"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -78,8 +82,16 @@ func Initialize() *context.Context {
 
 func main() {
 	versionFlag := false
+	consoleFlag := false
 	flag.BoolVar(&versionFlag, "version", false, "prints the version and exit")
+	flag.BoolVar(&consoleFlag, "c", false, "run in console mode")
 	flag.Parse()
+
+	if consoleFlag {
+		if runtime.GOOS == "windows" {
+			console.AttachConsole()
+		}
+	}
 
 	if versionFlag {
 		fmt.Println(VERSION_NAME)
@@ -95,45 +107,57 @@ func main() {
 		context.WriteConfig()
 	}
 
+	// check update
 	updater := poaUpdater.NewUpdater()
 	updater.Init(context)
 	updater.Start()
+
+	// create shortcut
+	autoStart := poaAutoStart.NewAutoStart()
+	autoStart.DeleteShortcut()
+	autoStart.CreateShortcut()
 
 	poa := poa.NewPoa()
 	poa.Init(context)
 	poa.Start()
 
-	// ui
-	os.Setenv("FYNE_THEME", "light") // light or dark
-	a := app.NewWithID("PoaApp")
-	a.SetIcon(res.IconMain)
-	a.Settings().SetTheme(&ui.MyTheme{})
-	a.Lifecycle().SetOnStarted(func() {
-		go func() {
-			for {
-				ui.Status.Refresh()
+	if consoleFlag {
+		for {
+			time.Sleep(time.Second)
+		}
+	} else {
+		// ui
+		os.Setenv("FYNE_THEME", "light") // light or dark
+		a := app.NewWithID("PoaApp")
+		a.SetIcon(res.IconMain)
+		a.Settings().SetTheme(&ui.MyTheme{})
+		a.Lifecycle().SetOnStarted(func() {
+			go func() {
+				for {
+					ui.Status.Refresh()
 
-				time.Sleep(time.Second)
-			}
-		}()
-	})
-	a.Lifecycle().SetOnStopped(func() {
-		log.Println("Lifecycle: Stopped")
-	})
-	win := a.NewWindow("PoA")
-	a.Settings().SetTheme(&ui.MyTheme{})
-	win.SetMaster()
+					time.Sleep(time.Second)
+				}
+			}()
+		})
+		a.Lifecycle().SetOnStopped(func() {
+			log.Println("Lifecycle: Stopped")
+		})
+		win := a.NewWindow("PoA")
+		a.Settings().SetTheme(&ui.MyTheme{})
+		win.SetMaster()
 
-	ui.Init(&a, context, poa)
-	uiMenu := ui.Menu{}
-	subContent := container.NewMax()
+		ui.Init(&a, context, poa)
+		uiMenu := ui.Menu{}
+		subContent := container.NewMax()
 
-	// mainContent := container.NewHSplit(uiMenu.MakeMenu(), uiStatus.GetContainer())
-	// mainContent.Offset = 0.2
-	mainContent := container.NewBorder(nil, nil, uiMenu.MakeMenu(subContent), nil, subContent)
-	win.SetContent(mainContent)
-	subContent.Objects = []fyne.CanvasObject{ui.Status.GetContent()}
+		// mainContent := container.NewHSplit(uiMenu.MakeMenu(), uiStatus.GetContainer())
+		// mainContent.Offset = 0.2
+		mainContent := container.NewBorder(nil, nil, uiMenu.MakeMenu(subContent), nil, subContent)
+		win.SetContent(mainContent)
+		subContent.Objects = []fyne.CanvasObject{ui.Status.GetContent()}
 
-	win.Resize(fyne.NewSize(640, 460))
-	win.ShowAndRun()
+		win.Resize(fyne.NewSize(640, 460))
+		win.ShowAndRun()
+	}
 }

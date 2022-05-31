@@ -20,9 +20,9 @@ import (
 type VersionRO int
 
 const (
-	lt VersionRO = 1 + iota
-	eq
-	gt
+	LESS_THAN VersionRO = 1 + iota
+	EQUAL
+	GREATER_THAN
 )
 
 type Updater struct {
@@ -43,7 +43,7 @@ func (updater *Updater) Init(context *context.Context) {
 	updater.interval = context.Configs.UpdateCheckIntervalSec
 }
 
-func versionCompare(ver1, ver2 string) VersionRO {
+func VersionCompare(ver1, ver2 string) VersionRO {
 	var major1, minor1, patch1 int
 	var major2, minor2, patch2 int
 
@@ -63,27 +63,27 @@ func versionCompare(ver1, ver2 string) VersionRO {
 		patch2, _ = strconv.Atoi(splitVer2[2])
 
 		if major1 > major2 {
-			return gt
+			return GREATER_THAN
 		} else if major1 < major2 {
-			return lt
+			return LESS_THAN
 		} else {
 			if minor1 > minor2 {
-				return gt
+				return GREATER_THAN
 			} else if minor1 < minor2 {
-				return lt
+				return LESS_THAN
 			} else {
 				if patch1 > patch2 {
-					return gt
+					return GREATER_THAN
 				} else if patch1 < patch2 {
-					return lt
+					return LESS_THAN
 				} else {
-					return eq
+					return EQUAL
 				}
 			}
 		}
 	}
 
-	return eq
+	return EQUAL
 }
 
 func verify(u *rokUpdater.Updater) error {
@@ -128,7 +128,7 @@ func (updater *Updater) update() (bool, error) {
 	fmt.Printf("current Version: %s, server Version: %s\n", u.Version, lastestVersion)
 
 	if err == nil {
-		if versionCompare(u.Version, lastestVersion) == lt {
+		if VersionCompare(u.Version, lastestVersion) == LESS_THAN {
 			fmt.Println("software update start")
 			updateStatus, err := u.Update()
 			if err != nil {

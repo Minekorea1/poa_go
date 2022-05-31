@@ -125,6 +125,14 @@ func (poa *Poa) Init(context *context.Context) {
 }
 
 func (poa *Poa) Start() {
+	fmt.Println("|", poa.deviceInfo.DeviceId)
+	fmt.Println("|", poa.deviceInfo.Owner)
+	fmt.Println("|", poa.deviceInfo.OwnNumber)
+	fmt.Println("|", poa.deviceInfo.MacAddress)
+	fmt.Println("|", poa.deviceInfo.DeviceType)
+	fmt.Println("|", poa.deviceInfo.DeviceDesc)
+	fmt.Println("|", poa.deviceInfo.Version)
+
 	go func() {
 		// random sleep
 		time.Sleep(time.Duration(rand.Int31n(10000)) * time.Millisecond)
