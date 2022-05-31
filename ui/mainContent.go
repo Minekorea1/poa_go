@@ -143,7 +143,7 @@ func (status *contentStatus) Refresh() {
 	status.labelPrivateIp.SetText(fmt.Sprintf("내부IP: %s", deviceInfo.PrivateIp))
 	status.labelMacAddress.SetText(fmt.Sprintf("맥주소: %s", deviceInfo.MacAddress))
 	status.labelDeviceId.SetText(fmt.Sprintf("장치 고유번호: %s", deviceInfo.DeviceId))
-	status.labelLastPoaTime.SetText(fmt.Sprintf("마지막 통신 시간: %s", time.Unix(poaInst.MqttPublishTimestamp, 0).Format("2006-01-02 15:04")))
+	status.labelLastPoaTime.SetText(fmt.Sprintf("마지막 통신 시간: %s", time.Unix(poaInst.MqttPublishTimestamp, 0).Format("2006-01-02 15:04:05")))
 	status.labelVersion.SetText(fmt.Sprintf("버전: %s", poaContext.Version))
 }
 
