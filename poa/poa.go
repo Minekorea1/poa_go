@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"poa/context"
+	"poa/event"
 	nettool "poa/netTool"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -36,9 +37,11 @@ type Poa struct {
 	brokerAddress string
 	brokerPort    int
 
-	mqttClient mqtt.Client
-	mqttOpts   *mqtt.ClientOptions
-	mqttQos    byte
+	mqttClient   mqtt.Client
+	mqttOpts     *mqtt.ClientOptions
+	mqttQos      byte
+	mqttUser     string
+	mqttPassword string
 
 	condCh chan int
 
@@ -68,12 +71,19 @@ type Command struct {
 	Type string
 
 	Update struct {
-		Update bool
+		ForceUpdate   bool
+		UpdateAddress string
 	}
 
-	Address struct {
-		UpdateAddress     string
+	Mqtt struct {
 		MqttBrokerAddress string
+		MqttPort          int
+		MqttUser          string
+		MqttPassword      string
+	}
+
+	Restart struct {
+		Restart bool
 	}
 }
 
@@ -97,6 +107,8 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.brokerAddress = context.Configs.MqttBrokerAddress
 	poa.brokerPort = context.Configs.MqttPort
 	poa.mqttQos = 1
+	poa.mqttUser = context.Configs.MqttUser
+	poa.mqttPassword = context.Configs.MqttPassword
 
 	poa.condCh = make(chan int)
 
@@ -110,17 +122,17 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.mqttOpts = mqtt.NewClientOptions()
 	poa.mqttOpts.AddBroker(fmt.Sprintf("tcp://%s:%d", poa.brokerAddress, poa.brokerPort))
 	poa.mqttOpts.SetClientID(poa.deviceInfo.DeviceId)
-	// poa.mqttOpts.SetUsername("emqx")
-	// poa.mqttOpts.SetPassword("public")
+	poa.mqttOpts.SetUsername(poa.mqttUser)
+	poa.mqttOpts.SetPassword(poa.mqttPassword)
 	poa.mqttOpts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 	})
 	poa.mqttOpts.SetAutoReconnect(true)
 	poa.mqttOpts.OnConnect = func(client mqtt.Client) {
-		fmt.Println("Connected")
+		fmt.Println("MQTT Connected")
 	}
 	poa.mqttOpts.OnConnectionLost = func(client mqtt.Client, err error) {
-		fmt.Printf("Connect lost: %v", err)
+		fmt.Printf("MQTT Connect lost: %v", err)
 	}
 }
 
@@ -166,7 +178,7 @@ func (poa *Poa) Start() {
 				command := Command{}
 				json.Unmarshal(msg.Payload(), &command)
 
-				fmt.Println("_____ cmd:", command)
+				poa.processCommand(&command)
 			})
 		token.Wait()
 
@@ -266,6 +278,28 @@ func (poa *Poa) processResponse(response *Response) {
 
 		poa.ForcePublish()
 	}
+}
+
+func (poa *Poa) processCommand(command *Command) {
+	switch command.Type {
+	case "update":
+		if command.Update.ForceUpdate {
+			poa.context.EventLooper.PushEvent(event.MAIN, event.EVENT_MAIN_FORCE_UPDATE)
+		} else if command.Update.UpdateAddress != "" {
+			poa.context.EventLooper.PushEvent(event.MAIN, event.EVENT_MAIN_CHANGE_UPDATE_ADDRESS, command.Update.UpdateAddress)
+		}
+
+	case "mqtt":
+		if command.Mqtt.MqttUser != "" && command.Mqtt.MqttPassword != "" {
+			poa.context.EventLooper.PushEvent(event.MAIN, event.EVENT_MAIN_MQTT_CHANGE_USER_PASSWORD, command.Mqtt.MqttUser, command.Mqtt.MqttPassword)
+		}
+
+	case "restart":
+		if command.Restart.Restart {
+			poa.context.EventLooper.PushEvent(event.MAIN, event.EVENT_MAIN_RESTART)
+		}
+	}
+
 }
 
 func (poa *Poa) GetDeviceInfo() *DeviceInfo {

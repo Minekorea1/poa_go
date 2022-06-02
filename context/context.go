@@ -1,6 +1,7 @@
 package context
 
 import (
+	"poa/event"
 	"poa/jsonWrapper"
 	"sync"
 )
@@ -8,9 +9,10 @@ import (
 type Context struct {
 	Version string
 
-	Configs Configs
-
+	Configs     Configs
 	mutexConfig *sync.Mutex
+
+	EventLooper *event.EventLooper
 }
 
 type Configs struct {
@@ -18,6 +20,8 @@ type Configs struct {
 	UpdateCheckIntervalSec int
 	MqttBrokerAddress      string
 	MqttPort               int
+	MqttUser               string
+	MqttPassword           string
 	PoaIntervalSec         int
 
 	DeviceId   string
@@ -49,6 +53,12 @@ func (context *Context) WriteConfig() {
 		context.Configs.WriteFile("config.json")
 		context.mutexConfig.Unlock()
 	}()
+}
+
+func (context *Context) WriteConfigSync() {
+	context.mutexConfig.Lock()
+	context.Configs.WriteFile("config.json")
+	context.mutexConfig.Unlock()
 }
 
 func (configs *Configs) ToJson() string {

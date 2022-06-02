@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"poa/context"
@@ -30,17 +31,21 @@ type Updater struct {
 	github   string
 	interval int
 	condCh   chan int
+
+	mutex *sync.Mutex
 }
 
 func NewUpdater() *Updater {
-	updater := Updater{}
+	updater := Updater{mutex: &sync.Mutex{}}
 	return &updater
 }
 
 func (updater *Updater) Init(context *context.Context) {
+	updater.mutex.Lock()
 	updater.version = context.Version
 	updater.github = context.Configs.UpdateAddress
 	updater.interval = context.Configs.UpdateCheckIntervalSec
+	updater.mutex.Unlock()
 }
 
 func VersionCompare(ver1, ver2 string) VersionRO {
@@ -114,6 +119,7 @@ func verify(u *rokUpdater.Updater) error {
 }
 
 func (updater *Updater) update() (bool, error) {
+	updater.mutex.Lock()
 	u := &rokUpdater.Updater{
 		Provider: &provider.Github{
 			RepositoryURL: updater.github,
@@ -122,6 +128,7 @@ func (updater *Updater) update() (bool, error) {
 		ExecutableName: fmt.Sprintf("poa_%s_%s", runtime.GOOS, runtime.GOARCH),
 		Version:        updater.version,
 	}
+	updater.mutex.Unlock()
 
 	lastestVersion, err := u.GetLatestVersion()
 

@@ -14,6 +14,7 @@ import (
 	poaAutoStart "poa/autostart"
 	"poa/console"
 	"poa/context"
+	"poa/event"
 	nettool "poa/netTool"
 	"poa/poa"
 	"poa/res"
@@ -26,7 +27,7 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.4.3"
+	VERSION_NAME                          = "v0.5.0"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"
@@ -107,6 +108,10 @@ func main() {
 		context.WriteConfig()
 	}
 
+	eventLooper := event.NewEventLooper()
+	eventLooper.Loop()
+	context.EventLooper = eventLooper
+
 	// check update
 	updater := poaUpdater.NewUpdater()
 	updater.Init(context)
@@ -120,6 +125,44 @@ func main() {
 	poa := poa.NewPoa()
 	poa.Init(context)
 	poa.Start()
+
+	eventLooper.RegisterEventHandler(event.MAIN, func(name event.EventName, args []interface{}) {
+		fmt.Println("name:", name, args)
+
+		switch name {
+		case event.EVENT_MAIN_RESTART:
+			fmt.Println("event.EVENT_MAIN_RESTART")
+			poaUpdater.StartSelfProcess()
+			os.Exit(0)
+
+		case event.EVENT_MAIN_MQTT_CHANGE_USER_PASSWORD:
+			fmt.Println("event.EVENT_MAIN_MQTT_CHANGE_USER_PASSWORD")
+			if len(args) == 2 {
+				fmt.Println("name:", args[0])
+				fmt.Println("password:", args[1])
+				context.Configs.MqttUser = args[0].(string)
+				context.Configs.MqttPassword = args[1].(string)
+				context.WriteConfigSync()
+
+				poaUpdater.StartSelfProcess()
+				os.Exit(0)
+			}
+
+		case event.EVENT_MAIN_FORCE_UPDATE:
+			fmt.Println("event.EVENT_MAIN_FORCE_UPDATE")
+			updater.Update()
+
+		case event.EVENT_MAIN_CHANGE_UPDATE_ADDRESS:
+			fmt.Println("event.EVENT_MAIN_CHANGE_UPDATE_ADDRESS")
+			if len(args) == 1 {
+				fmt.Println("update address:", args[0])
+				context.Configs.UpdateAddress = args[0].(string)
+				context.WriteConfig()
+
+				updater.Init(context)
+			}
+		}
+	})
 
 	if consoleFlag {
 		for {
