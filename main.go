@@ -27,11 +27,9 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.5.0"
+	VERSION_NAME                          = "v0.5.2"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
-	MQTT_BROKER_ADDRESS                   = "minekorea.asuscomm.com"
-	MQTT_PORT                             = 1883
 	POA_INTERVAL_SEC                      = 60
 )
 
@@ -71,10 +69,6 @@ func Initialize() *context.Context {
 		APPLICATION_UPDATE_ADDRESS, context.Configs.UpdateAddress).(string)
 	context.Configs.UpdateCheckIntervalSec = ternaryOP(context.Configs.UpdateCheckIntervalSec <= 0,
 		APPLICATION_UPDATE_CHECK_INTERVAL_SEC, context.Configs.UpdateCheckIntervalSec).(int)
-	context.Configs.MqttBrokerAddress = ternaryOP(emptyString(context.Configs.MqttBrokerAddress),
-		MQTT_BROKER_ADDRESS, context.Configs.MqttBrokerAddress).(string)
-	context.Configs.MqttPort = ternaryOP(context.Configs.MqttPort <= 0,
-		MQTT_PORT, context.Configs.MqttPort).(int)
 	context.Configs.PoaIntervalSec = ternaryOP(context.Configs.PoaIntervalSec <= 0,
 		POA_INTERVAL_SEC, context.Configs.PoaIntervalSec).(int)
 
@@ -138,8 +132,8 @@ func main() {
 		case event.EVENT_MAIN_MQTT_CHANGE_USER_PASSWORD:
 			fmt.Println("event.EVENT_MAIN_MQTT_CHANGE_USER_PASSWORD")
 			if len(args) == 2 {
-				fmt.Println("name:", args[0])
-				fmt.Println("password:", args[1])
+				// fmt.Println("name:", args[0])
+				// fmt.Println("password:", args[1])
 				context.Configs.MqttUser = args[0].(string)
 				context.Configs.MqttPassword = args[1].(string)
 				context.WriteConfigSync()

@@ -43,7 +43,8 @@ type Poa struct {
 	mqttUser     string
 	mqttPassword string
 
-	condCh chan int
+	condCh            chan int
+	condMqttConnectCh chan int
 
 	context *context.Context
 }
@@ -111,6 +112,7 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.mqttPassword = context.Configs.MqttPassword
 
 	poa.condCh = make(chan int)
+	poa.condMqttConnectCh = make(chan int)
 
 	poa.context = context
 
@@ -130,6 +132,8 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.mqttOpts.SetAutoReconnect(true)
 	poa.mqttOpts.OnConnect = func(client mqtt.Client) {
 		fmt.Println("MQTT Connected")
+
+		poa.condMqttConnectCh <- 0
 	}
 	poa.mqttOpts.OnConnectionLost = func(client mqtt.Client, err error) {
 		fmt.Printf("MQTT Connect lost: %v", err)
@@ -157,46 +161,40 @@ func (poa *Poa) Start() {
 			return
 		}
 
-		publicIp, _ := nettool.GetPublicIP()
-		privateIP := nettool.GetPrivateIP()
+		var publicIp string
+		var privateIP string
 
-		if publicIp == "" || privateIP == "" {
-			panic("failed to obtain ip address.")
-		}
+		for publicIp == "" || privateIP == "" {
+			publicIp, _ = nettool.GetPublicIP()
+			privateIP = nettool.GetPrivateIP()
 
-		token := poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/response/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
-			func(client mqtt.Client, msg mqtt.Message) {
-				response := Response{}
-				json.Unmarshal(msg.Payload(), &response)
-
-				poa.processResponse(&response)
-			})
-		token.Wait()
-
-		token = poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/command/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
-			func(client mqtt.Client, msg mqtt.Message) {
-				command := Command{}
-				json.Unmarshal(msg.Payload(), &command)
-
-				poa.processCommand(&command)
-			})
-		token.Wait()
-
-		if poa.deviceInfo.OwnNumber <= 0 {
-			poa.deviceInfo.PublicIp = publicIp
-			poa.deviceInfo.PrivateIp = privateIP
-
-			request := Request{Type: "register"}
-			request.Register.DeviceInfo = poa.deviceInfo
-
-			doc, err := json.MarshalIndent(request, "", "    ")
-			if err == nil {
-				token := poa.mqttClient.Publish("mine/server/request", poa.mqttQos, false, string(doc))
-				token.Wait()
-			} else {
-				log.Println(err)
+			if publicIp == "" || privateIP == "" {
+				time.Sleep(time.Second * 10)
 			}
 		}
+
+		go func() {
+			for {
+				<-poa.condMqttConnectCh
+				poa.registerMqttSubscribe()
+
+				if poa.deviceInfo.OwnNumber <= 0 && publicIp != "" && privateIP != "" {
+					poa.deviceInfo.PublicIp = publicIp
+					poa.deviceInfo.PrivateIp = privateIP
+
+					request := Request{Type: "register"}
+					request.Register.DeviceInfo = poa.deviceInfo
+
+					doc, err := json.MarshalIndent(request, "", "    ")
+					if err == nil {
+						token := poa.mqttClient.Publish("mine/server/request", poa.mqttQos, false, string(doc))
+						token.Wait()
+					} else {
+						log.Println(err)
+					}
+				}
+			}
+		}()
 
 		// loop start
 		go func() {
@@ -215,10 +213,13 @@ func (poa *Poa) Start() {
 			for {
 				<-poa.condCh
 
-				publicIp, _ := nettool.GetPublicIP()
-				privateIP := nettool.GetPrivateIP()
+				var publicIp string
+				var privateIP string
 
-				if poa.deviceInfo.OwnNumber <= 0 {
+				publicIp, _ = nettool.GetPublicIP()
+				privateIP = nettool.GetPrivateIP()
+
+				if poa.deviceInfo.OwnNumber <= 0 && publicIp != "" && privateIP != "" {
 					poa.deviceInfo.PublicIp = publicIp
 					poa.deviceInfo.PrivateIp = privateIP
 
@@ -241,6 +242,8 @@ func (poa *Poa) Start() {
 						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
 						token.Wait()
 
+						fmt.Println("publish mqtt poa message")
+
 						poa.MqttPublishTimestamp = time.Now().Unix()
 					} else {
 						log.Println(err)
@@ -249,6 +252,40 @@ func (poa *Poa) Start() {
 			}
 		}()
 	}()
+}
+
+func (poa *Poa) registerMqttSubscribe() {
+	var publicIp string
+	var privateIP string
+
+	fmt.Println("register mqtt subscribe")
+
+	for publicIp == "" || privateIP == "" {
+		publicIp, _ = nettool.GetPublicIP()
+		privateIP = nettool.GetPrivateIP()
+
+		if publicIp == "" || privateIP == "" {
+			time.Sleep(time.Second * 10)
+		}
+	}
+
+	token := poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/response/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
+		func(client mqtt.Client, msg mqtt.Message) {
+			response := Response{}
+			json.Unmarshal(msg.Payload(), &response)
+
+			poa.processResponse(&response)
+		})
+	token.Wait()
+
+	token = poa.mqttClient.Subscribe(fmt.Sprintf("mine/%s/%s/poa/command/#", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos,
+		func(client mqtt.Client, msg mqtt.Message) {
+			command := Command{}
+			json.Unmarshal(msg.Payload(), &command)
+
+			poa.processCommand(&command)
+		})
+	token.Wait()
 }
 
 func (poa *Poa) ForcePublish() {
