@@ -10,6 +10,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
@@ -29,6 +30,8 @@ var (
 
 	menus     map[string]Menu
 	menuIndex map[string][]string
+
+	window *fyne.Window
 
 	Status *contentStatus
 	Config *contentConfig
@@ -52,9 +55,16 @@ type contentConfig struct {
 	ownerEntry       *widget.Entry
 	ownNumberEntry   *numericalEntry
 	descriptionEntry *widget.Entry
+
+	mqttAddressEntry  *widget.Entry
+	mqttPortEntry     *numericalEntry
+	mqttUserEntry     *widget.Entry
+	mqttPasswordEntry *widget.Entry
 }
 
-func Init(_ *fyne.App, ctx *context.Context, p *poa.Poa) {
+func Init(_ *fyne.App, win *fyne.Window, ctx *context.Context, p *poa.Poa) {
+	window = win
+
 	poaContext = ctx
 	poaInst = p
 
@@ -102,6 +112,11 @@ func (menu *Menu) MakeMenu(main *fyne.Container) *fyne.Container {
 					Config.ownerEntry.SetText(deviceInfo.Owner)
 					Config.ownNumberEntry.SetText(strconv.FormatInt(int64(deviceInfo.OwnNumber), 10))
 					Config.descriptionEntry.SetText(deviceInfo.DeviceDesc)
+
+					Config.mqttAddressEntry.SetText(poaContext.Configs.MqttBrokerAddress)
+					Config.mqttPortEntry.SetText(strconv.FormatInt(int64(poaContext.Configs.MqttPort), 10))
+					Config.mqttUserEntry.SetText(poaContext.Configs.MqttUser)
+					Config.mqttPasswordEntry.SetText(poaContext.Configs.MqttPassword)
 				}
 			}
 		},
@@ -159,12 +174,22 @@ func newConfig() *contentConfig {
 	config.ownerEntry = widget.NewEntry()
 	config.ownNumberEntry = NewNumericalEntry()
 	config.descriptionEntry = widget.NewEntry() //widget.NewMultiLineEntry()
+	config.mqttAddressEntry = widget.NewEntry()
+	config.mqttPortEntry = NewNumericalEntry()
+	config.mqttUserEntry = widget.NewEntry()
+	config.mqttPasswordEntry = widget.NewPasswordEntry()
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "사용자", Widget: config.ownerEntry},
 			{Text: "장치 번호", Widget: config.ownNumberEntry},
-			{Text: "설명", Widget: config.descriptionEntry}},
+			{Text: "설명", Widget: config.descriptionEntry},
+			{Text: "", Widget: layout.NewSpacer()},
+			{Text: "MQTT 주소", Widget: config.mqttAddressEntry},
+			{Text: "MQTT 포트", Widget: config.mqttPortEntry},
+			{Text: "MQTT 사용자", Widget: config.mqttUserEntry},
+			{Text: "MQTT 패스워드", Widget: config.mqttPasswordEntry},
+		},
 		OnSubmit: func() {
 			deviceInfo := poaInst.GetDeviceInfo()
 			// oldOwner := deviceInfo.Owner
@@ -174,6 +199,17 @@ func newConfig() *contentConfig {
 			deviceInfo.DeviceDesc = config.descriptionEntry.Text
 
 			poaInst.WriteDeviceInfo(deviceInfo)
+
+			oldConfigs := poaContext.Configs
+			poaContext.Configs.MqttBrokerAddress = config.mqttAddressEntry.Text
+			poaContext.Configs.MqttPort, _ = strconv.Atoi(config.mqttPortEntry.Text)
+			poaContext.Configs.MqttUser = config.mqttUserEntry.Text
+			poaContext.Configs.MqttPassword = config.mqttPasswordEntry.Text
+			poaContext.WriteConfig()
+
+			if oldConfigs != poaContext.Configs {
+				dialog.ShowInformation("접속 정보 변경", "수정 사항을 적용하려면 프로그램을 재시작 해주세요.", *window)
+			}
 
 			go func() {
 				// if oldOwner != deviceInfo.Owner && oldOwnNumber == deviceInfo.OwnNumber {

@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.5.2"
+	VERSION_NAME                          = "v0.5.3"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	POA_INTERVAL_SEC                      = 60
@@ -184,7 +184,7 @@ func main() {
 		a.Settings().SetTheme(&ui.MyTheme{})
 		win.SetMaster()
 
-		ui.Init(&a, context, poa)
+		ui.Init(&a, &win, context, poa)
 		uiMenu := ui.Menu{}
 		subContent := container.NewMax()
 
