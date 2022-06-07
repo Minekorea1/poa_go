@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION_NAME                          = "v0.5.3"
+	VERSION_NAME                          = "v0.5.4"
 	APPLICATION_UPDATE_ADDRESS            = "github.com/Minekorea1/poa_go"
 	APPLICATION_UPDATE_CHECK_INTERVAL_SEC = 3600
 	POA_INTERVAL_SEC                      = 60

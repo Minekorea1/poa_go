@@ -61,6 +61,14 @@ func (powerShell *PowerShell) removeOldShortCut() {
 			log.Println(err)
 		}
 	}
+
+	shortCutPath = home + "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\poa_windows_amd64 - 바로 가기.lnk"
+	if _, err := os.Stat(shortCutPath); err == nil {
+		err = os.Remove(shortCutPath)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 }
 
 func (powerShell *PowerShell) removeShortCut() {
