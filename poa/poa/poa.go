@@ -147,6 +147,11 @@ func (poa *Poa) Init(context *context.Context) {
 		logger.LogI("MQTT connected")
 
 		poa.condMqttConnectCh <- 0
+
+		// run once at startup
+		go func() {
+			poa.condCh <- 0
+		}()
 	}
 	poa.mqttOpts.OnConnectionLost = func(client mqtt.Client, err error) {
 		logger.LogfI("MQTT connect lost: %v", err)
@@ -216,11 +221,6 @@ func (poa *Poa) Start() {
 				for range ticker.C {
 					poa.condCh <- 0
 				}
-			}()
-
-			// run once at startup
-			go func() {
-				poa.condCh <- 0
 			}()
 
 			for {
