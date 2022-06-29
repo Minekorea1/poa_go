@@ -3,17 +3,30 @@ package poa
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
-	"os"
 	"time"
 
 	"poa/context"
 	"poa/event"
+	"poa/log"
 	nettool "poa/netTool"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
+
+var logger = log.NewLogger("PoA")
+
+type mqttLogger struct {
+	log.Logger
+}
+
+func (l mqttLogger) Println(v ...interface{}) {
+	l.Log(l.Level, v...)
+}
+
+func (l mqttLogger) Printf(format string, v ...interface{}) {
+	l.LogFormat(l.Level, format, v...)
+}
 
 type DeviceInfo struct {
 	// Timestamp int64
@@ -116,10 +129,10 @@ func (poa *Poa) Init(context *context.Context) {
 
 	poa.context = context
 
-	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
-	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
-	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
-	// mqtt.DEBUG = log.New(os.Stdout, "[DEBUG] ", 0)
+	mqtt.ERROR = mqttLogger{Logger: log.Logger{Tag: "mqtt", Timestamp: true, Level: log.Fatal}}
+	mqtt.CRITICAL = mqttLogger{Logger: log.Logger{Tag: "mqtt", Timestamp: true, Level: log.Error}}
+	mqtt.WARN = mqttLogger{Logger: log.Logger{Tag: "mqtt", Timestamp: true, Level: log.Warning}}
+	// mqtt.DEBUG = mqttLogger{Logger: log.Logger{Tag: "mqtt", Timestamp: true, Level: log.Debug}}
 
 	poa.mqttOpts = mqtt.NewClientOptions()
 	poa.mqttOpts.AddBroker(fmt.Sprintf("tcp://%s:%d", poa.brokerAddress, poa.brokerPort))
@@ -127,27 +140,27 @@ func (poa *Poa) Init(context *context.Context) {
 	poa.mqttOpts.SetUsername(poa.mqttUser)
 	poa.mqttOpts.SetPassword(poa.mqttPassword)
 	poa.mqttOpts.SetDefaultPublishHandler(func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+		logger.LogfV("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 	})
 	poa.mqttOpts.SetAutoReconnect(true)
 	poa.mqttOpts.OnConnect = func(client mqtt.Client) {
-		fmt.Println("MQTT Connected")
+		logger.LogI("MQTT connected")
 
 		poa.condMqttConnectCh <- 0
 	}
 	poa.mqttOpts.OnConnectionLost = func(client mqtt.Client, err error) {
-		fmt.Printf("MQTT Connect lost: %v", err)
+		logger.LogfI("MQTT connect lost: %v", err)
 	}
 }
 
 func (poa *Poa) Start() {
-	fmt.Println("|", poa.deviceInfo.DeviceId)
-	fmt.Println("|", poa.deviceInfo.Owner)
-	fmt.Println("|", poa.deviceInfo.OwnNumber)
-	fmt.Println("|", poa.deviceInfo.MacAddress)
-	fmt.Println("|", poa.deviceInfo.DeviceType)
-	fmt.Println("|", poa.deviceInfo.DeviceDesc)
-	fmt.Println("|", poa.deviceInfo.Version)
+	logger.LogI("|", poa.deviceInfo.DeviceId)
+	logger.LogI("|", poa.deviceInfo.Owner)
+	logger.LogI("|", poa.deviceInfo.OwnNumber)
+	logger.LogI("|", poa.deviceInfo.MacAddress)
+	logger.LogI("|", poa.deviceInfo.DeviceType)
+	logger.LogI("|", poa.deviceInfo.DeviceDesc)
+	logger.LogI("|", poa.deviceInfo.Version)
 
 	go func() {
 		// random sleep
@@ -156,7 +169,7 @@ func (poa *Poa) Start() {
 		poa.mqttClient = mqtt.NewClient(poa.mqttOpts)
 
 		if token := poa.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-			log.Println(token.Error())
+			logger.LogE(token.Error())
 			time.AfterFunc(time.Second*60, poa.Start)
 			return
 		}
@@ -190,7 +203,7 @@ func (poa *Poa) Start() {
 						token := poa.mqttClient.Publish("mine/server/request", poa.mqttQos, false, string(doc))
 						token.Wait()
 					} else {
-						log.Println(err)
+						logger.LogE(err)
 					}
 				}
 			}
@@ -219,34 +232,42 @@ func (poa *Poa) Start() {
 				publicIp, _ = nettool.GetPublicIP()
 				privateIP = nettool.GetPrivateIP()
 
-				if poa.deviceInfo.OwnNumber <= 0 && publicIp != "" && privateIP != "" {
-					poa.deviceInfo.PublicIp = publicIp
-					poa.deviceInfo.PrivateIp = privateIP
+				if poa.deviceInfo.OwnNumber <= 0 {
+					if publicIp != "" && privateIP != "" {
+						poa.deviceInfo.PublicIp = publicIp
+						poa.deviceInfo.PrivateIp = privateIP
 
-					request := Request{Type: "register"}
-					request.Register.DeviceInfo = poa.deviceInfo
+						request := Request{Type: "register"}
+						request.Register.DeviceInfo = poa.deviceInfo
 
-					doc, err := json.MarshalIndent(request, "", "    ")
-					if err == nil {
-						token := poa.mqttClient.Publish("mine/server/request", poa.mqttQos, false, string(doc))
-						token.Wait()
-					} else {
-						log.Println(err)
+						doc, err := json.MarshalIndent(request, "", "    ")
+						if err == nil {
+							token := poa.mqttClient.Publish("mine/server/request", poa.mqttQos, false, string(doc))
+							token.Wait()
+						} else {
+							logger.LogE(err)
+						}
 					}
-				} else if publicIp != "" && privateIP != "" {
-					poa.deviceInfo.PublicIp = publicIp
-					poa.deviceInfo.PrivateIp = privateIP
+				} else {
+					if publicIp != "" && privateIP != "" {
+						poa.deviceInfo.PublicIp = publicIp
+						poa.deviceInfo.PrivateIp = privateIP
+					}
 
-					doc, err := json.MarshalIndent(poa.deviceInfo, "", "    ")
-					if err == nil {
-						token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
-						token.Wait()
+					if poa.deviceInfo.PublicIp != "" && poa.deviceInfo.PrivateIp != "" {
+						doc, err := json.MarshalIndent(poa.deviceInfo, "", "    ")
+						if err == nil {
+							token := poa.mqttClient.Publish(fmt.Sprintf("mine/%s/%s/poa/info", publicIp, poa.deviceInfo.DeviceId), poa.mqttQos, false, string(doc))
+							token.Wait()
 
-						fmt.Println("publish mqtt poa message")
+							logger.LogD("publish mqtt poa message")
 
-						poa.MqttPublishTimestamp = time.Now().Unix()
+							poa.MqttPublishTimestamp = time.Now().Unix()
+						} else {
+							logger.LogE(err)
+						}
 					} else {
-						log.Println(err)
+						logger.LogW("publish failed: public ip = ", publicIp, ", private ip = ", privateIP)
 					}
 				}
 			}
@@ -258,7 +279,7 @@ func (poa *Poa) registerMqttSubscribe() {
 	var publicIp string
 	var privateIP string
 
-	fmt.Println("register mqtt subscribe")
+	logger.LogD("register mqtt subscribe")
 
 	for publicIp == "" || privateIP == "" {
 		publicIp, _ = nettool.GetPublicIP()
@@ -311,7 +332,7 @@ func (poa *Poa) processResponse(response *Response) {
 		// poa.context.WriteConfig()
 		poa.WriteDeviceInfo(&poa.deviceInfo)
 
-		fmt.Println("set OwnNumber =", poa.deviceInfo.OwnNumber)
+		logger.LogD("set OwnNumber =", poa.deviceInfo.OwnNumber)
 
 		poa.ForcePublish()
 	}

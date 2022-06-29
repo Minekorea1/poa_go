@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko" data-framework="javascript">
+
+<body>
+    <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">
+    <link href="/www/assets/css/status.css" rel="stylesheet">
+
+    <!-- using jquery -->
+    <script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+
+    <div id="statusContent">
+        사용자: {{.Owner}}<br>
+        장치 번호: {{.OwnNumber}}<br>
+        설명: {{.DeviceDesc}}<br>
+
+        <hr>
+
+        공인IP: {{.PublicIp}}<br>
+        내부IP: {{.PrivateIp}}<br>
+        맥주소: {{.MacAddress}}<br>
+        장치 고유번호: {{.DeviceId}}<br>
+        마지막 통신 시간: {{.MqttPublishTimestamp}}<br>
+        버전: {{.Version}}<br>
+    </div>
+
+    <script>
+        window.setInterval(function () {
+            var currentLocation = window.location;
+            $("#statusContent").load(currentLocation + ' #statusContent');
+        }, 1000);
+    </script>
+</body>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko" data-framework="javascript">
+
+<head>
+	<meta charset="utf-8">
+	<title>PoA</title>
+	<link href="/www/assets/css/index.css" rel="stylesheet">
+
+	<meta name='viewport' content='width=device-width' />
+</head>
+
+<body>
+	<section id="title" class="title">
+		<div id="header">
+			<h1><a href="#" onclick="return showPage('status')">PoA</a></h1>
+			<nav>
+				<h2 class="hidden">카테고리</h2>
+				<ul class="menu">
+					<li><a href="#" onclick="return showPage('status')">상태</a></li>
+					<li><a href="#" onclick="return showPage('config')">설정</a></li>
+				</ul>
+			</nav>
+		</div>
+	</section>
+
+	<section class="main">
+		<div id="pageContent" class="pageContent"></div>
+	</section>
+
+	<script>
+		function showPage(page) {
+			if (('sessionStorage' in window) && window['sessionStorage'] !== null) {
+				sessionStorage.setItem('currentPage', page);
+				console.log("currentPage << ", page);
+			}
+
+			titleHeight = document.getElementById("title").clientHeight;
+			document.getElementById("pageContent").innerHTML = '<object type="text/html" title="XXX" data="' + page + '" style="width:100%;height:' +
+				(window.innerHeight - titleHeight - 10) + 'px"></object>';
+			// document.getElementById("pageContent").style.width = window.innerWidth + "px";
+			// document.getElementById("pageContent").style.overflow = "hidden";
+		}
+
+		window.onpageshow = function (event) {
+			console.log("window.performance.navigation.type = ", window.performance.navigation.type);
+
+			if (('sessionStorage' in window) && window['sessionStorage'] !== null) {
+				if (sessionStorage.getItem('currentPage')) {
+					lastPage = sessionStorage.getItem('currentPage');
+					console.log("lastPage >> ", lastPage);
+					showPage(lastPage);
+				} else {
+					showPage('status');
+				}
+			} else {
+				showPage('status');
+			}
+
+			// 새로고침: window.performance.navigation.type == 1
+			// 뒤로가기: window.performance.navigation.type == 2
+			// if (event.persisted || (window.performance && (window.performance.navigation.type == 1 || window.performance.navigation.type == 2))) {
+			// }
+		}
+	</script>
+
+	<!--
+	<script src="node_modules/todomvc-common/base.js"></script>
+	<script src="js/helpers.js"></script>
+	<script src="js/store.js"></script>
+	<script src="js/model.js"></script>
+	<script src="js/template.js"></script>
+	<script src="js/view.js"></script>
+	<script src="js/controller.js"></script>
+	<script src="js/app.js"></script>
+	 -->
+</body>
+
+</html>

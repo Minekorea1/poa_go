@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+// create directory;package
+option go_package = "./watcher;watcher";
+
+service WatcherService {
+    // PoA to Service
+    rpc ImAlive(AliveTimestamp) returns (AliveVoid);
+
+    // Watcher to Service
+    rpc GetAlive(AliveVoid) returns (AliveTimestamp);
+}
+
+message AliveVoid {}
+
+message AliveTimestamp {
+    int64 mqtt_publish_timestamp = 1;
+}

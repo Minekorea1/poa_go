@@ -1,0 +1,47 @@
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 700;
+    src: local('Spoqa Han Sans Neo Bold'),
+    url('/www/assets/fonts/SpoqaHanSansNeo-Bold.woff') format('woff'),
+}
+
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 500;
+    src: local('Spoqa Han Sans Neo Medium'),
+    url('/www/assets/fonts/SpoqaHanSansNeo-Medium.woff') format('woff'),
+}
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 400;
+    src: local('Spoqa Han Sans Neo Regular'),
+    url('/www/assets/fonts/SpoqaHanSansNeo-Regular.woff') format('woff'),
+}
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 300;
+    src: local('Spoqa Han Sans Neo Light'),
+    url('/www/assets/fonts/SpoqaHanSansNeo-Light.woff') format('woff'),
+}
+
+@font-face {
+    font-family: 'Spoqa Han Sans Neo';
+    font-weight: 100;
+    src: local('Spoqa Han Sans Neo Thin'),
+    url('/www/assets/fonts/SpoqaHanSansNeo-Thin.woff') format('woff'),
+}
+
+body {
+    font: 18px 'Spoqa Han Sans Neo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    line-height: 2em;
+    font-weight: normal;
+}
+
+#statusContent {
+    /* background: #4d4d4d; */
+    /* width: fit-content; */
+    overflow: auto;
+}

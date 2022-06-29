@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko" data-framework="javascript">
+
+<body>
+    <link href="/www/assets/css/config.css" rel="stylesheet">
+
+    <!-- using jquery -->
+    <script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+
+    <iframe id="invisible" name="invisible" style="display:none;"></iframe>
+    <div id="configContent">
+        <!-- <form action="/apply" method="post"> -->
+        <form id="configForm" name="configForm" action="/apply" method="post" accept-charset="utf-8" target="invisible"
+            onsubmit="return submitForm('/apply');">
+            <label>사용자:</label> <input type="text" name="Owner" value="{{.Owner}}"> <br>
+            <label>장치 번호:</label> <input type="text" name="OwnNumber" value="{{.OwnNumber}}" pattern="\d+"> <br>
+            <label>설명:</label> <input type="text" name="DeviceDesc" value="{{.DeviceDesc}}"><br>
+            <label>MQTT 주소:</label> <input type="text" name="MqttBrokerAddress" value="{{.MqttBrokerAddress}}"><br>
+            <label>MQTT 포트:</label> <input type="text" name="MqttPort" value="{{.MqttPort}}" pattern="\d+"><br>
+            <label>MQTT 사용자:</label> <input type="text" name="MqttUser" value="{{.MqttUser}}"><br>
+            <label>MQTT 패스워드:</label> <input type="password" name="MqttPassword" value="{{.MqttPassword}}"> <br>
+            <input type="submit" value="적용">
+        </form>
+    </div>
+
+    <script>
+        function submitForm(url) {
+            var form = document.getElementsByName('configForm')[0];
+
+            // Getting an FormData
+            let data = new FormData(form);
+            let serializedFormData = serialize(data);
+            let jsonData = JSON.stringify(serializedFormData);
+            console.log(jsonData);
+
+            $.ajax({
+                type: "POST",
+                url: "/apply",
+                data: jsonData,
+                success: function () { },
+                dataType: "json",
+                contentType: "application/json"
+            });
+
+            // form.submit();
+            // form.reset();
+            return false;
+        }
+
+        function serialize(rawData) {
+            let rtnData = {};
+            for (let [key, value] of rawData) {
+                let sel = document.querySelectorAll("[name=" + key + "]");
+
+                if (sel.length > 1) {
+                    // Array Values
+                    if (rtnData[key] === undefined) {
+                        rtnData[key] = [];
+                    }
+                    rtnData[key].push(value);
+                }
+                else {
+                    // Other
+                    rtnData[key] = value;
+                }
+            }
+            return rtnData;
+        }
+    </script>
+</body>

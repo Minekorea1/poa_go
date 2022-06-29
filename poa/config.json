@@ -1,0 +1,14 @@
+{
+    "UpdateAddress": "github.com/Minekorea1/poa_go",
+    "UpdateCheckIntervalSec": 3600,
+    "MqttBrokerAddress": "",
+    "MqttPort": 0,
+    "MqttUser": "",
+    "MqttPassword": "",
+    "PoaIntervalSec": 60,
+    "DeviceId": "60dd8ec9271elnwkVcYpbsn",
+    "Owner": "",
+    "OwnNumber": 0,
+    "DeviceType": 0,
+    "DeviceDesc": ""
+}
