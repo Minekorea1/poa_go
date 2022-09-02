@@ -5,14 +5,15 @@ option go_package = "./watcher;watcher";
 
 service WatcherService {
     // PoA to Service
-    rpc ImAlive(AliveTimestamp) returns (AliveVoid);
+    rpc ImAlive(AliveInfo) returns (AliveVoid);
 
     // Watcher to Service
-    rpc GetAlive(AliveVoid) returns (AliveTimestamp);
+    rpc GetAlive(AliveVoid) returns (AliveInfo);
 }
 
 message AliveVoid {}
 
-message AliveTimestamp {
+message AliveInfo {
     int64 mqtt_publish_timestamp = 1;
+    repeated string poa_args = 2;
 }

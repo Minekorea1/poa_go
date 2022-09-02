@@ -23,9 +23,9 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WatcherServiceClient interface {
 	// PoA to Service
-	ImAlive(ctx context.Context, in *AliveTimestamp, opts ...grpc.CallOption) (*AliveVoid, error)
+	ImAlive(ctx context.Context, in *AliveInfo, opts ...grpc.CallOption) (*AliveVoid, error)
 	// Watcher to Service
-	GetAlive(ctx context.Context, in *AliveVoid, opts ...grpc.CallOption) (*AliveTimestamp, error)
+	GetAlive(ctx context.Context, in *AliveVoid, opts ...grpc.CallOption) (*AliveInfo, error)
 }
 
 type watcherServiceClient struct {
@@ -36,7 +36,7 @@ func NewWatcherServiceClient(cc grpc.ClientConnInterface) WatcherServiceClient {
 	return &watcherServiceClient{cc}
 }
 
-func (c *watcherServiceClient) ImAlive(ctx context.Context, in *AliveTimestamp, opts ...grpc.CallOption) (*AliveVoid, error) {
+func (c *watcherServiceClient) ImAlive(ctx context.Context, in *AliveInfo, opts ...grpc.CallOption) (*AliveVoid, error) {
 	out := new(AliveVoid)
 	err := c.cc.Invoke(ctx, "/WatcherService/ImAlive", in, out, opts...)
 	if err != nil {
@@ -45,8 +45,8 @@ func (c *watcherServiceClient) ImAlive(ctx context.Context, in *AliveTimestamp, 
 	return out, nil
 }
 
-func (c *watcherServiceClient) GetAlive(ctx context.Context, in *AliveVoid, opts ...grpc.CallOption) (*AliveTimestamp, error) {
-	out := new(AliveTimestamp)
+func (c *watcherServiceClient) GetAlive(ctx context.Context, in *AliveVoid, opts ...grpc.CallOption) (*AliveInfo, error) {
+	out := new(AliveInfo)
 	err := c.cc.Invoke(ctx, "/WatcherService/GetAlive", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -59,9 +59,9 @@ func (c *watcherServiceClient) GetAlive(ctx context.Context, in *AliveVoid, opts
 // for forward compatibility
 type WatcherServiceServer interface {
 	// PoA to Service
-	ImAlive(context.Context, *AliveTimestamp) (*AliveVoid, error)
+	ImAlive(context.Context, *AliveInfo) (*AliveVoid, error)
 	// Watcher to Service
-	GetAlive(context.Context, *AliveVoid) (*AliveTimestamp, error)
+	GetAlive(context.Context, *AliveVoid) (*AliveInfo, error)
 	mustEmbedUnimplementedWatcherServiceServer()
 }
 
@@ -69,10 +69,10 @@ type WatcherServiceServer interface {
 type UnimplementedWatcherServiceServer struct {
 }
 
-func (UnimplementedWatcherServiceServer) ImAlive(context.Context, *AliveTimestamp) (*AliveVoid, error) {
+func (UnimplementedWatcherServiceServer) ImAlive(context.Context, *AliveInfo) (*AliveVoid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ImAlive not implemented")
 }
-func (UnimplementedWatcherServiceServer) GetAlive(context.Context, *AliveVoid) (*AliveTimestamp, error) {
+func (UnimplementedWatcherServiceServer) GetAlive(context.Context, *AliveVoid) (*AliveInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAlive not implemented")
 }
 func (UnimplementedWatcherServiceServer) mustEmbedUnimplementedWatcherServiceServer() {}
@@ -89,7 +89,7 @@ func RegisterWatcherServiceServer(s grpc.ServiceRegistrar, srv WatcherServiceSer
 }
 
 func _WatcherService_ImAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AliveTimestamp)
+	in := new(AliveInfo)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func _WatcherService_ImAlive_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/WatcherService/ImAlive",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WatcherServiceServer).ImAlive(ctx, req.(*AliveTimestamp))
+		return srv.(WatcherServiceServer).ImAlive(ctx, req.(*AliveInfo))
 	}
 	return interceptor(ctx, in, info, handler)
 }

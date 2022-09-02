@@ -3,6 +3,8 @@ package watcher
 import (
 	context "context"
 	"net"
+	"os"
+	"os/exec"
 	"poa/log"
 	"time"
 
@@ -17,15 +19,17 @@ type watcherServer struct {
 	WatcherServiceServer
 
 	MqttPublishTimestamp int64
+	PoaArgs              []string
 }
 
-func (server *watcherServer) ImAlive(ctx context.Context, in *AliveTimestamp) (*AliveVoid, error) {
+func (server *watcherServer) ImAlive(ctx context.Context, in *AliveInfo) (*AliveVoid, error) {
 	server.MqttPublishTimestamp = in.MqttPublishTimestamp
+	server.PoaArgs = in.PoaArgs
 	return &AliveVoid{}, nil
 }
 
-func (server *watcherServer) GetAlive(ctx context.Context, in *AliveVoid) (*AliveTimestamp, error) {
-	return &AliveTimestamp{MqttPublishTimestamp: server.MqttPublishTimestamp}, nil
+func (server *watcherServer) GetAlive(ctx context.Context, in *AliveVoid) (*AliveInfo, error) {
+	return &AliveInfo{MqttPublishTimestamp: server.MqttPublishTimestamp, PoaArgs: server.PoaArgs}, nil
 }
 
 func RunServer() {
@@ -45,7 +49,7 @@ func RunServer() {
 	}
 }
 
-func RunClient() {
+func RunClient() *AliveInfo {
 	conn, err := grpc.Dial("localhost:"+GRPC_PORT, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		logger.LogfE("did not connect: %v", err)
@@ -57,11 +61,34 @@ func RunClient() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	var timestamp *AliveTimestamp
-	timestamp, err = c.GetAlive(ctx, &AliveVoid{})
+	var aliveInfo *AliveInfo
+	aliveInfo, err = c.GetAlive(ctx, &AliveVoid{})
 	if err != nil {
 		logger.LogfE("could not request: %v", err)
 	}
 
-	logger.LogfD("Config: %v", timestamp)
+	logger.LogI(aliveInfo.GetMqttPublishTimestamp())
+	// logger.LogI(aliveInfo.GetPoaArgs())
+
+	return aliveInfo
+}
+
+var originalWD, _ = os.Getwd()
+
+func StartProcess(args ...string) (*os.Process, error) {
+	logger.LogW("StartProcess ", args)
+	argv0, err := exec.LookPath(args[0])
+	if err != nil {
+		return nil, err
+	}
+
+	process, err := os.StartProcess(argv0, args, &os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		Dir:   originalWD,
+	})
+	if err != nil {
+		logger.LogE(err)
+		return nil, err
+	}
+	return process, nil
 }

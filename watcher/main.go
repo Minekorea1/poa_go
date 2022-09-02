@@ -16,9 +16,20 @@ func main() {
 
 	go watcher.RunServer()
 
-	for {
-		watcher.RunClient()
+	var lastAliveInfo *watcher.AliveInfo
 
-		time.Sleep(time.Second * 10)
+	for {
+		aliveInfo := watcher.RunClient()
+
+		if lastAliveInfo != nil {
+			if aliveInfo.MqttPublishTimestamp-lastAliveInfo.MqttPublishTimestamp == 0 {
+				logger.LogW("PoA is not responding. restart PoA.")
+				watcher.StartProcess(aliveInfo.GetPoaArgs()...)
+			}
+		}
+
+		lastAliveInfo = aliveInfo
+
+		time.Sleep(time.Minute * 5)
 	}
 }

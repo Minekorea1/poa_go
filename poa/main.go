@@ -92,7 +92,7 @@ func runRpcClient(poa *poa.Poa) {
 		// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		// defer cancel()
 
-		void, err := c.ImAlive(context.Background(), &watcher.AliveTimestamp{MqttPublishTimestamp: poa.MqttPublishTimestamp})
+		void, err := c.ImAlive(context.Background(), &watcher.AliveInfo{MqttPublishTimestamp: poa.MqttPublishTimestamp, PoaArgs: os.Args})
 		_ = void
 		if err != nil {
 			logger.LogfE("could not request: %v", err)
